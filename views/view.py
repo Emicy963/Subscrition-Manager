@@ -67,7 +67,7 @@ class SubscriptionService:
         month = today.month
         last_12_month = []
         for _ in range(12):
-            last_12_month.append(month, year)
+            last_12_month.append((month, year))
             month -= 1
             if month == 0:
                 month = 12
@@ -79,14 +79,25 @@ class SubscriptionService:
             statement = select(Payments)
             results = session.exec(statement).all()
 
-            value_for_month = []
+            values_for_month = []
             for i in last_12_month:
-                value = 0
+                values = 0
                 for result in results:
                     if result.date.month == i[0] and result.date.year == i[1]:
-                        value += float(result.subscription.price_subscription)
-                value_for_month.append(value)
+                        values += float(result.subscription.price_subscription)
+                values_for_month.append(values)
+            return values_for_month
+
+    def gen_chart(self):
+        last_12_months = self._get_last_12_months_native()
+        values_for_month = self._get_values_for_month(last_12_months)
+        last_12_months = list(map(lambda x: x[0], self._get_last_12_months_native()))
+
+        import matplotlib.pyplot as plt
+
+        plt.plot([last_12_months], [values_for_month])
+        plt.show()
 
 
 ss = SubscriptionService(engine)
-print(ss.delete(1))
+print(ss.gen_chart())
