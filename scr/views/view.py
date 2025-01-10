@@ -1,6 +1,6 @@
 import __init__
-from models.database import engine
-from models.model import Subscription, Payments
+from scr.models.database import engine
+from scr.models.model import Subscription, Payments
 from sqlmodel import Session, select
 from datetime import date, datetime
 
@@ -76,7 +76,7 @@ class SubscriptionService:
     
     def _get_values_for_month(self, last_12_month):
         with Session(self.engine) as session:
-            statement = select(Payments)
+            statement = select(Payments).join(Subscription)
             results = session.exec(statement).all()
 
             values_for_month = []
@@ -84,20 +84,24 @@ class SubscriptionService:
                 values = 0
                 for result in results:
                     if result.date.month == i[0] and result.date.year == i[1]:
-                        values += float(result.subscription.price_subscription)
+                        if result.subscription and result.subscription.price_subscription:
+                            values += float(result.subscription.price_subscription)
                 values_for_month.append(values)
             return values_for_month
 
     def gen_chart(self):
         last_12_months = self._get_last_12_months_native()
         values_for_month = self._get_values_for_month(last_12_months)
-        last_12_months = list(map(lambda x: x[0], self._get_last_12_months_native()))
+        months = list(map(lambda x: f"{x[0]}/{x[1]}", last_12_months))
 
         import matplotlib.pyplot as plt
 
-        plt.plot([last_12_months], [values_for_month])
+        plt.figure(figsize=(12, 6))
+        plt.plot(months, values_for_month)
+        plt.title("Gastos com Assinaturas nos Últimos 12 Meses")
+        plt.xlabel("Mês/Ano")
+        plt.ylabel("Valor (Kz$)")
+        plt.xticks(rotation=45)
+        plt.grid(True)
+        plt.tight_layout()
         plt.show()
-
-
-ss = SubscriptionService(engine)
-print(ss.gen_chart())
